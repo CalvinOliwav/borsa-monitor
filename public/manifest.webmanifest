@@ -1,0 +1,10 @@
+{
+  "name": "Borsa Monitor",
+  "short_name": "Borsa",
+  "description": "Prezzi e allarmi del portafoglio su Borsa Italiana",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef1ef",
+  "theme_color": "#14232b",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

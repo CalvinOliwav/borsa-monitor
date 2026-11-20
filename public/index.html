@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14232b">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg">
+<title>Borsa Monitor</title>
+<style>
+  :root{
+    --bg:#eef1ef; --card:#fff; --ink:#14232b; --muted:#53656d; --line:#c3cdc8; --strong:#14232b;
+    --up:#0f7b4b; --down:#b8372b; --accent:#1b4f72; --head:#14232b; --warn:#8a5700; --tint:#e3ebf0;
+    --yellow:#ffe14d; color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0e171c; --card:#16232a; --ink:#e9f0ec; --muted:#9db0b8; --line:#34474f; --strong:#9db0b8;
+      --up:#3ddc97; --down:#ff7a6b; --accent:#7cc0ee; --head:#0a1115; --warn:#e8b04a; --tint:#1d3039; color-scheme: dark; }
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  h1{font-size:20px;margin:0 0 6px}h2{font-size:16px;margin:16px 0 6px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 10px}.small{font-size:12px;color:var(--muted)}
+  button{font:inherit;cursor:pointer;border:1px solid var(--strong);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 12px;min-height:42px}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  @media (prefers-color-scheme: dark){button.primary{color:#0a1115}}
+  input,select,textarea{font:inherit;min-height:42px;border:1px solid var(--strong);border-radius:8px;padding:6px 10px;background:var(--card);color:var(--ink);width:100%}
+  textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+  /* barra superiore */
+  header{background:var(--head);color:#e9f0ec;padding:calc(10px + env(safe-area-inset-top)) 14px 10px}
+  .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .top h1{flex:1;margin:0;color:#fff;min-width:140px}
+  header button{background:#223640;border-color:#4a6573;color:#fff;min-height:38px;padding:6px 11px}
+  .stamp{font-size:13px;color:#b5c7ce;margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
+  .stamp b{color:#fff;font-size:15px}
+  .pill{padding:1px 9px;border-radius:99px;font-size:12px;font-weight:700}
+  .open{background:#134e36;color:#8ff0c3}.closed{background:#3a3f43;color:#cfd6d9}
+  .banner{background:var(--yellow);color:#14232b;font-weight:600;padding:8px 14px;font-size:13px}
+  /* riquadri riepilogo */
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:10px 12px 4px}
+  @media(min-width:760px){.cards{grid-template-columns:repeat(4,1fr)}}
+  .card{background:var(--card);border:2px solid var(--strong);border-radius:10px;padding:8px 10px}
+  .card .k{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  .card .v{font-size:19px;font-weight:750;font-variant-numeric:tabular-nums}
+  .card .n{font-size:12px;color:var(--muted)}
+  .up{color:var(--up)}.down{color:var(--down)}
+  .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 12px}
+  .tools label{display:flex;gap:6px;align-items:center;font-size:14px;font-weight:600}
+  .tools input{width:auto;min-height:0}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:2px 12px 8px;font-size:12.5px;color:var(--muted)}
+  .sw{display:inline-block;width:14px;height:14px;border:1px solid var(--strong);vertical-align:-2px;margin-right:4px}
+  .sw.y{background:var(--yellow)}
+  /* tabella */
+  .wrap{overflow:auto;max-height:80dvh;margin:0 8px;border:3px solid var(--strong);border-radius:6px;-webkit-overflow-scrolling:touch;background:var(--card)}
+  table{border-collapse:separate;border-spacing:0;min-width:100%;background:var(--card)}
+  th,td{padding:9px 11px;border-bottom:1px solid var(--strong);border-right:1px solid var(--line);white-space:nowrap}
+  .sep{border-left:3px solid var(--strong)}
+  thead th{position:sticky;background:var(--head);color:#fff;text-align:right;font-size:12.5px;font-weight:700;border-right:1px solid #4a6573;border-bottom:1px solid #4a6573}
+  thead tr:first-child th{top:0;height:30px;text-align:center;font-size:12px;letter-spacing:.05em;text-transform:uppercase;background:#0a1115;border-bottom:1px solid #4a6573}
+  thead tr:nth-child(2) th{top:30px;border-bottom:3px solid var(--strong)}
+  thead th.sep{border-left:3px solid #fff}
+  td:first-child,thead th:first-child{position:sticky;left:0;z-index:4;background:var(--card);border-right:3px solid var(--strong);text-align:left}
+  thead th:first-child{z-index:8;background:var(--head)}
+  tr.grp td{background:var(--tint);font-weight:800;font-size:14px;color:var(--accent);border-top:3px solid var(--strong);border-bottom:2px solid var(--strong);position:sticky;left:0}
+  tbody tr.row:nth-child(even) td:not(.hl){background:color-mix(in srgb,var(--tint) 45%,var(--card))}
+  tbody tr.row{cursor:pointer}
+  tbody tr.row:active td{filter:brightness(.94)}
+  td.id{white-space:normal;min-width:210px;max-width:250px}
+  .isin{font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;letter-spacing:.02em}
+  .full{font-weight:600;font-size:13px;line-height:1.25;margin:2px 0}
+  .tkr{font-size:12px;color:var(--muted)}.tkr b{color:var(--ink);background:var(--tint);padding:0 6px;border-radius:4px}
+  .last{font-weight:800;font-size:17px}
+  .b{font-weight:800}
+  td.hl{background:var(--yellow)!important;color:#14232b!important}
+  td.hl .up{color:#0a5c37}td.hl .down{color:#9b2216}
+  .err{color:var(--warn);font-size:12.5px;white-space:normal;min-width:240px;font-weight:600}
+  .al-line{font-size:13px;line-height:1.25;margin:1px 0}
+  .bell.none{color:var(--muted)}
+  svg.sp{display:block;margin-left:auto}
+  details.guide{margin:10px 12px calc(20px + env(safe-area-inset-bottom));background:var(--card);border:2px solid var(--strong);border-radius:10px;padding:8px 12px}
+  details.guide summary{font-weight:700;cursor:pointer}
+  details.guide dl{margin:8px 0 0;font-size:13.5px}details.guide dt{font-weight:750;margin-top:6px}details.guide dd{margin:0;color:var(--muted)}
+  td.tp{white-space:normal;min-width:96px;max-width:130px}
+  .tipo{font-weight:850;font-size:14px;color:var(--accent)}
+  td.isin{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;font-size:13px}
+  td.den{white-space:normal;min-width:210px;max-width:260px;font-weight:600;font-size:13px;line-height:1.25}
+  .big{font-size:16px}
+  .miss{color:var(--warn);font-size:12px;font-weight:700;white-space:normal;min-width:150px}
+  td.alcell{min-width:150px}
+  input.alin{width:104px;min-height:36px;text-align:right;font-weight:800;font-size:15px;border:2px solid var(--strong);padding:2px 8px}
+  .mini-b{min-height:30px;padding:2px 8px;font-size:12px;margin-top:3px;border-width:1px}
+  .h3{font-size:15px;margin:14px 0 4px}
+  ul.notes{margin:4px 0;padding-left:18px;font-size:13.5px}
+  .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}.pgrid label small{font-weight:400}
+  details.params{border-top:1px solid var(--line);padding-top:6px}details.params summary{font-weight:700;cursor:pointer;font-size:13px}
+  /* pannello dettaglio */
+  dialog{border:0;padding:0;width:min(580px,100%);max-width:100%;margin:auto auto 0;border-radius:16px 16px 0 0;background:var(--card);color:var(--ink);max-height:92dvh}
+  dialog::backdrop{background:rgba(0,0,0,.5)}
+  .sheet{padding:16px 16px calc(18px + env(safe-area-inset-bottom))}
+  .sheet h2{margin:0;font-size:18px}
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;margin:10px 0;font-size:14px}
+  .kv div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:4px 0}.kv span{color:var(--muted)}
+  form.al{display:flex;gap:8px;margin:12px 0 6px}form.al input{flex:1;min-width:0}form.al select{width:auto}
+  ul.alist{list-style:none;padding:0;margin:8px 0}
+  ul.alist li{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+  ul.alist li>span{flex:1}
+  .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:200;max-width:90%}
+  /* procedura iniziale */
+  #wiz{position:fixed;inset:0;z-index:100;background:var(--bg);overflow:auto}
+  .wizbox{max-width:720px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) 14px calc(30px + env(safe-area-inset-bottom))}
+  .box{background:var(--card);border:2px solid var(--strong);border-radius:10px;padding:10px 12px;margin:10px 0}
+  .box summary{font-weight:700;cursor:pointer}
+  .btns{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.btns button{flex:1;min-width:150px}
+  .warnbox{background:var(--yellow);color:#14232b;border-radius:8px;padding:8px 10px;font-weight:600;font-size:13.5px}
+  .okbox{background:color-mix(in srgb,var(--up) 18%,var(--card));border:1px solid var(--up);border-radius:8px;padding:8px 10px;font-size:13.5px}
+  .radios{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0;font-size:14px}.radios label,.chk{display:flex;gap:6px;align-items:center}
+  .radios input,.chk input{width:auto;min-height:0}
+  table.mini{width:100%;font-size:13px;border:2px solid var(--strong)}table.mini td,table.mini th{padding:6px 8px;white-space:normal}
+  table.mini th{background:var(--head);color:#fff;text-align:left;position:static}
+  table.mini tr.grp td{position:static}
+  .rc{background:var(--card);border:2px solid var(--strong);border-radius:10px;padding:8px;margin:10px 0;display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+  .rc label{font-size:12px;font-weight:700;color:var(--muted);display:block}.rc label.full,.rc .rc-h{grid-column:1/-1}
+  .rc-h{display:flex;align-items:center;gap:8px}.rc-h b{flex:1}
+  .rc input[data-f=isin]{text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;font-weight:700}
+  .rc.bad{border-color:var(--down)}
+  .errs{color:var(--down);font-weight:600;font-size:13.5px;margin:6px 0;padding-left:18px}
+</style>
+</head>
+<body>
+
+<div id="wiz" hidden></div>
+
+<div id="app" hidden>
+<header>
+  <div class="top">
+    <h1>Borsa Monitor</h1>
+    <button id="btnInst">Titoli</button>
+    <button id="btnTg">Prova Telegram</button>
+    <button id="btnRef">Aggiorna</button>
+  </div>
+  <div class="stamp">
+    <span>Rilevazione: <b id="stamp">…</b></span>
+    <span id="mkt" class="pill closed">…</span>
+  </div>
+</header>
+<div id="banner" class="banner" hidden></div>
+<div class="cards" id="cards"></div>
+<div class="tools">
+  <label><input type="checkbox" id="onlyHl"> Mostra solo i titoli evidenziati</label>
+  <label title="Se attivo, gli avvisi automatici restano fissi finché non premi “Copia i target negli avvisi”"><input type="checkbox" id="lockT" checked> 🔒 Blocca i target</label>
+  <button id="btnSync">Copia i target negli avvisi</button>
+  <button id="btnCsv">Esporta CSV</button>
+</div>
+<div class="legend" id="legend"></div>
+<div class="wrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+<details class="guide">
+  <summary>Come leggere la tabella</summary>
+  <dl>
+    <dt>Tipo</dt><dd>Che cos'è il titolo (BTP, BTP€i, OAT, BUND, OBBLIGAZIONE, ETF, AZIONE), dedotto da ISIN, tipo e denominazione di Borsa Italiana.</dd>
+    <dt>Prezzo attuale</dt><dd>Prezzo dell'ultimo contratto letto da Borsa Italiana (ritardo di circa 15 minuti). Per i titoli obbligazionari è il prezzo “secco”, in % del valore nominale.</dd>
+    <dt>Prezzo reale</dt><dd>Quanto paghi davvero, escluse le commissioni bancarie: prezzo secco + rateo di cedola, moltiplicato per il coefficiente di indicizzazione per i BTP€i; per gli ETF aggiunge spese di ingresso e costi di gestione (TER) su alcuni anni.</dd>
+    <dt>Interesse effettivo annuo</dt><dd>Rendimento annuo a scadenza calcolato sul Prezzo reale (per i BTP€i è reale, cioè sopra l'inflazione). Sotto trovi la stima dopo le imposte. Per gli ETF serve il rendimento atteso del fondo.</dd>
+    <dt>Prezzo target</dt><dd>Prezzo a cui il titolo scenderebbe se i tassi BCE salissero dello 0,25% (titoli di stato, BTP€i, ETF obbligazionari) o se i mercati azionari calassero del 5% (ETF azionari). Per i BTP€i trovi anche il prezzo reale di acquisto con indicizzazione e rateo.</dd>
+    <dt>Prezzo alert</dt><dd>Valore che fa partire il messaggio Telegram. Viene copiato dal Prezzo target e resta fisso finché “🔒 Blocca i target” è attivo; puoi anche scrivere un valore tuo. “↻ target” o “Copia i target negli avvisi” lo aggiornano al target di adesso.</dd>
+    <dt>Importo e Peso</dt><dd>Quanto hai in portafoglio nel titolo e la sua quota sul totale.</dd>
+    <dt>Δ prec.</dt><dd>Differenza di prezzo rispetto alla rilevazione precedente. Se supera la soglia (di solito 0,04 €) la cella diventa <b>gialla</b>.</dd>
+    <dt>Var %, Var. € stima, Intraday</dt><dd>Variazione sul giorno precedente (Borsa Italiana), stima del guadagno o perdita di oggi sull'importo, e mini-grafico dei prezzi di oggi.</dd>
+    <dt>N. contratti e Controvalore</dt><dd>Quante operazioni sono state concluse oggi e il loro valore in euro.</dd>
+    <dt>Altri dati</dt><dd>Tutte le altre voci presenti nella scheda del titolo su Borsa Italiana.</dd>
+  </dl>
+</details>
+<dialog id="dlg"><div class="sheet" id="sheet"></div></dialog>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const eur = (n) => n.toLocaleString("it-IT", { maximumFractionDigits: 0 }) + " €";
+const fmt = (n) => n.toLocaleString("it-IT", { maximumFractionDigits: 4 });
+const sgn = (n, d = 2) => (n > 0 ? "+" : "") + n.toLocaleString("it-IT", { minimumFractionDigits: d, maximumFractionDigits: d });
+const ISIN_OK = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
+const KINDS = [["etf", "ETF / ETC"], ["btp", "BTP / titolo di stato a tasso fisso"], ["btpi", "BTP€i / titolo indicizzato all'inflazione"], ["bond", "Obbligazione (altra)"], ["stock", "Azione"]];
+const NUMF = ["coupon", "indexRatio", "ter", "entry", "duration", "ytm"];
+const PARAMS = ["coupon", "maturity", "freq", "indexRatio", "ter", "entry", "duration", "ytm", "etfClass", "url", "taxRate"];
+const px = (n, d = 3) => n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: d });
+const pc = (n) => n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+const kindLabel = (k) => (KINDS.find((x) => x[0] === k) || [, k])[1];
+const PIN = [
+  ["Ultimo", /^ultimo (contratto|prezzo)|^ultimo$/i],
+  ["Var %", /^var/i],
+  ["N. contratti", /contratti/i],
+  ["Controvalore", /controvalore/i],
+];
+const pick = (f, re) => { const k = Object.keys(f || {}).find((k) => re.test(k)); return k ? [k, f[k]] : [null, ""]; };
+const signCls = (v) => (/^\s*-/.test(v || "") ? "down" : /[1-9]/.test(v || "") ? "up" : "");
+const tfmt = (iso, withDate) => new Date(iso).toLocaleString("it-IT", { timeZone: "Europe/Rome", ...(withDate ? { day: "2-digit", month: "2-digit" } : {}), hour: "2-digit", minute: "2-digit", ...(withDate ? {} : { second: "2-digit" }) });
+
+let KEY = localStorage.getItem("appkey") || "";
+let SAVED = [], D = null, openId = null, draft = [], appStarted = false, onlyHl = false, TABLE_ROWS = [];
+
+async function api(path, opt = {}) {
+  const r = await fetch("/api/" + path, { ...opt, headers: { "content-type": "application/json", "x-app-key": KEY } });
+  if (r.status === 401) {
+    const k = prompt("Chiave di accesso");
+    if (k === null) throw new Error("Chiave necessaria");
+    KEY = k; localStorage.setItem("appkey", k);
+    return api(path, opt);
+  }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || "Errore " + r.status);
+  return j;
+}
+function toast(m) { const t = document.createElement("div"); t.className = "toast"; t.textContent = m; document.body.append(t); setTimeout(() => t.remove(), 3500); }
+
+/* ================= PROCEDURA INIZIALE ================= */
+function wizShow(html) {
+  $("#app").hidden = true; const w = $("#wiz"); w.hidden = false;
+  w.innerHTML = `<div class="wizbox">${html}</div>`; w.scrollTop = 0;
+}
+function listTable(list) {
+  let h = `<table class="mini"><thead><tr><th>ISIN</th><th>Ticker</th><th>Denominazione</th><th style="text-align:right">Importo</th></tr></thead><tbody>`, g = "";
+  for (const i of list) {
+    if (i.group !== g) { g = i.group; const t = list.filter((x) => x.group === g).reduce((s, x) => s + (+x.amount || 0), 0); h += `<tr class="grp"><td colspan="4">${esc(g)} · ${eur(t)}</td></tr>`; }
+    h += `<tr><td class="isin">${esc(i.isin) || "<span class='down'>mancante</span>"}</td><td><b>${esc(i.ticker)}</b></td><td>${esc(i.name)}</td><td class="num">${eur(+i.amount || 0)}</td></tr>`;
+  }
+  return h + `</tbody></table>`;
+}
+const totalOf = (l) => l.reduce((s, x) => s + (+x.amount || 0), 0);
+
+function wizStep1() {
+  const miss = SAVED.filter((i) => !i.isin);
+  wizShow(`<h1>Confermi i titoli della tabella?</h1>
+    <p class="sub">Sono ${SAVED.length} titoli, per un totale di <b>${eur(totalOf(SAVED))}</b>.</p>
+    ${listTable(SAVED)}
+    ${miss.length ? `<p class="warnbox">⚠️ ISIN mancante per: ${miss.map((i) => esc(i.ticker)).join(", ")}. Senza ISIN il prezzo non si può leggere: scegli “No” per completarlo.</p>` : ""}
+    <label class="chk" style="margin-top:12px"><input type="checkbox" id="skip"> Non chiedermelo più all'apertura (potrai sempre modificare dal tasto “Titoli”)</label>
+    <div class="btns"><button class="primary" id="w1yes">Sì, confermo</button><button id="w1no">No, voglio modificarli</button></div>`);
+}
+
+function wizStep2() {
+  draft = SAVED.map((x) => ({ ...x }));
+  wizShow(`<h1>Modifica i titoli</h1>
+    <p class="sub">Puoi incollare una tabella da un altro programma, oppure modificare, eliminare o aggiungere i titoli uno per uno.</p>
+    <details class="box" open><summary>Incolla una tabella da un altro programma</summary>
+      <p class="sub" style="margin-top:8px">Copia le righe da Excel, Fogli Google, Word o un file CSV e incollale qui. Riconosco ISIN, ticker, denominazione, gruppo e importo, anche nel formato “Componente / Strumenti (ISIN) / Importo”. Controlla poi il risultato qui sotto.</p>
+      <textarea id="paste" rows="6" placeholder="Esempio:&#10;IE00BK5BQT80&#9;VWCE&#9;Vanguard FTSE All-World&#9;Azionario globale&#9;10.000"></textarea>
+      <div class="radios"><label><input type="radio" name="pm" value="replace" checked> Sostituisci tutta la tabella</label><label><input type="radio" name="pm" value="append"> Aggiungi a quella esistente</label></div>
+      <button class="primary" id="doPaste">Leggi la tabella incollata</button>
+      <div id="pasteMsg" class="small" style="margin-top:6px"></div>
+    </details>
+    <h2>Titoli (puoi modificarli)</h2>
+    <datalist id="grps"></datalist>
+    <div id="rows"></div>
+    <button id="addRow">+ Aggiungi un titolo</button>
+    <div class="btns"><button class="primary" id="w2next">Avanti: controlla il riepilogo</button><button id="w2back">Annulla</button></div>`);
+  drawRows();
+}
+function drawRows() {
+  $("#grps").innerHTML = [...new Set(draft.map((d) => d.group).filter(Boolean))].map((g) => `<option value="${esc(g)}">`).join("");
+  $("#rows").innerHTML = draft.map((x, i) => `<div class="rc" data-i="${i}">
+    <div class="rc-h"><b>${i + 1}. ${esc(x.ticker || "nuovo titolo")}</b><button data-rm="${i}">Elimina</button></div>
+    <label>ISIN<input data-f="isin" maxlength="12" value="${esc(x.isin)}" autocapitalize="characters"></label>
+    <label>Ticker<input data-f="ticker" value="${esc(x.ticker)}"></label>
+    <label class="full">Denominazione (in tabella userò quella di Borsa Italiana)<input data-f="name" value="${esc(x.name)}"></label>
+    <label>Gruppo<input data-f="group" list="grps" value="${esc(x.group)}"></label>
+    <label>Importo in €<input data-f="amount" inputmode="decimal" value="${x.amount ?? ""}"></label>
+    <label class="full">Tipo<select data-f="kind">${KINDS.map(([v, l]) => `<option value="${v}" ${x.kind === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+    <details class="full params"><summary>Parametri per i calcoli (facoltativi)</summary>
+      <p class="small">Servono solo se Borsa Italiana non fornisce il dato: quello che scrivi qui ha la precedenza. Lascia vuoto per usare i dati del sito.</p>
+      <div class="pgrid">
+        <label>Cedola annua % <small>(titoli di stato/obbl.)</small><input data-f="coupon" inputmode="decimal" value="${x.coupon ?? ""}"></label>
+        <label>Scadenza <small>(titoli di stato/obbl.)</small><input type="date" data-f="maturity" value="${esc(x.maturity)}"></label>
+        <label>Cedole all'anno<select data-f="freq"><option value="">dal sito / automatico</option>${[1, 2, 4].map((n) => `<option value="${n}" ${+x.freq === n ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+        <label>Coefficiente di indicizzazione <small>(BTP€i)</small><input data-f="indexRatio" inputmode="decimal" value="${x.indexRatio ?? ""}"></label>
+        <label>TER % annuo <small>(ETF)</small><input data-f="ter" inputmode="decimal" value="${x.ter ?? ""}"></label>
+        <label>Spese di ingresso % <small>(ETF)</small><input data-f="entry" inputmode="decimal" value="${x.entry ?? ""}"></label>
+        <label>Duration modificata <small>(ETF obbligazionari)</small><input data-f="duration" inputmode="decimal" value="${x.duration ?? ""}"></label>
+        <label>Rendimento atteso / YTM % <small>(ETF)</small><input data-f="ytm" inputmode="decimal" value="${x.ytm ?? ""}"></label>
+        <label>Classe ETF<select data-f="etfClass"><option value="">automatica</option><option value="equity" ${x.etfClass === "equity" ? "selected" : ""}>azionario</option><option value="bond" ${x.etfClass === "bond" ? "selected" : ""}>obbligazionario</option></select></label>
+        <label class="full">URL scheda Borsa Italiana <small>(solo se la lettura automatica non trova il titolo)</small><input data-f="url" value="${esc(x.url)}" placeholder="https://www.borsaitaliana.it/..."></label>
+      </div></details>
+  </div>`).join("");
+}
+
+/* ---- lettura di una tabella incollata ---- */
+const ISIN_G = /\b[A-Z]{2}[A-Z0-9]{9}\d\b/g;
+const MONEY = /(\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?\s*(?:€|eur\b)/i;
+const TICK = /\b[A-Z][A-Z0-9]{2,5}\b/g;
+const EXC = new Set(["ISIN", "EUR", "ETF", "ETC", "BTP", "CCT", "BOT", "CTZ", "UCITS"]);
+const toNum = (s) => { const n = parseFloat(String(s).replace(/[^\d,.\-]/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", ".")); return Number.isFinite(n) ? n : 0; };
+const isinsIn = (s) => String(s).match(ISIN_G) || [];
+function guessKind(isin, name, group) {
+  const t = `${name} ${group}`;
+  if (/etf|etc\b|ucits|ishares|vanguard|amundi|xtrackers|spdr|lyxor/i.test(t)) return "etf";
+  if (/€\s?i\b|indicizz|inflaz|\bbtp\s?i\b/i.test(t) && /^(IT|FR|DE)/.test(isin)) return "btpi";
+  if (/^IT/.test(isin)) return /btp|cct|\bbot\b|ctz|stato|buono/i.test(t) ? "btp" : /obblig|bond/i.test(t) ? "bond" : "stock";
+  if (/^(FR|DE|ES|PT|NL|AT|BE)/.test(isin) && /oat|bund|bobl|schatz|treasury|stato|gov/i.test(t)) return "btp";
+  if (/obblig|bond|notes/i.test(t)) return "bond";
+  return "etf";
+}
+function parsePaste(text, known) {
+  const rows = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+    .map((l) => { const d = ["\t", "|", ";"].find((x) => l.includes(x)); return (d ? l.split(d) : [l]).map((c) => c.trim()); });
+  let map = null;
+  if (rows[0] && !isinsIn(rows[0].join(" ")).length && /isin|ticker|simbolo|denominazione|descrizione|gruppo|componente|importo|strumenti|nome/i.test(rows[0].join(" "))) {
+    map = {};
+    rows.shift().forEach((h, i) => {
+      const x = h.toLowerCase();
+      if (/isin|strument/.test(x)) map.isin ??= i;
+      else if (/ticker|simbolo|codice/.test(x)) map.ticker ??= i;
+      else if (/denominaz|descriz|nome/.test(x)) map.name ??= i;
+      else if (/gruppo|component|categoria|asset/.test(x)) map.group ??= i;
+      else if (/importo|controvalore|valore|ammontare|investit/.test(x)) map.amount ??= i;
+      else if (/tipo/.test(x)) map.kind ??= i;
+    });
+  }
+  const mk = ({ isin = "", ticker = "", name = "", group = "", amount = null, kind = "" }) => {
+    const kn = known.find((k) => (isin && k.isin === isin) || (ticker && k.ticker.toLowerCase() === ticker.toLowerCase()));
+    const I = isin || kn?.isin || "";
+    const G = group || kn?.group || "Altro", N = name || kn?.name || "";
+    const K = kind || kn?.kind || guessKind(I, N, G);
+    const P = {}; if (kn) PARAMS.forEach((k) => { if (kn[k] != null && kn[k] !== "") P[k] = kn[k]; });
+    return { ...P, id: kn?.id, isin: I, ticker: ticker || kn?.ticker || (I ? (K === "btp" || K === "btpi" ? "BTP " + I.slice(-4) : I) : ""), name: N, group: G, amount: amount ?? (kn?.amount || 0), kind: K };
+  };
+  const out = [];
+  for (const cells of rows) {
+    const nI = cells.map((c) => isinsIn(c).length);
+    let idx = map?.isin != null && cells[map.isin] != null ? map.isin : Math.max(...nI) > 0 ? nI.indexOf(Math.max(...nI)) : -1;
+    if (idx < 0) idx = cells.findIndex((c) => /;/.test(c) || (MONEY.test(c) && (c.match(TICK) || []).some((t) => !EXC.has(t))));
+    if (idx < 0) continue;
+    const cell = cells[idx];
+    const composite = /;/.test(cell) || isinsIn(cell).length > 1;
+    const others = cells.filter((_, i) => i !== idx);
+    const rowAmt = map?.amount != null ? toNum(cells[map.amount]) : (others.find((c) => MONEY.test(c)) ? toNum(others.find((c) => MONEY.test(c)).match(MONEY)[0]) : null);
+    const textCells = others.map((c, k) => ({ c, before: cells.indexOf(c) < idx })).filter(({ c }) => /[A-Za-zÀ-ù]/.test(c) && !MONEY.test(c) && !/^\s*[\d.,]+\s*%?\s*$/.test(c) && !isinsIn(c).length);
+    const items = [];
+    for (const p of cell.split(";").map((x) => x.trim()).filter(Boolean)) {
+      const is = isinsIn(p), am = p.match(MONEY);
+      const rest = p.replace(ISIN_G, " ").replace(MONEY, " ").replace(/ciascuno/gi, " ");
+      const tk = (rest.match(TICK) || []).find((t) => !EXC.has(t)) || "";
+      const nm = rest.replace(tk, " ").replace(/\b(e|ed)\b|[,()]/g, " ").replace(/\s+/g, " ").trim();
+      const amt = am ? toNum(am[0]) : rowAmt;
+      if (is.length) is.forEach((isin) => items.push({ isin, ticker: is.length === 1 ? tk : "", name: is.length === 1 ? nm : "", amount: amt }));
+      else if (tk) items.push({ ticker: tk, amount: amt });
+    }
+    if (!items.length) continue;
+    if (!composite && !map && items.length === 1) {
+      const it = items[0];
+      if (!it.ticker) { const t = textCells.findIndex(({ c }) => /^[A-Z0-9]{2,6}$/.test(c)); if (t >= 0) it.ticker = textCells.splice(t, 1)[0].c; }
+      if (textCells.length >= 2) { textCells.sort((a, b) => b.c.length - a.c.length); it.name ||= textCells[0].c; it.group = textCells[1].c; }
+      else if (textCells.length === 1) { if (textCells[0].before) it.group = textCells[0].c; else it.name ||= textCells[0].c; }
+    } else if (!map) {
+      const g = textCells[0]?.c; items.forEach((it) => (it.group = g || ""));
+    } else {
+      items.forEach((it) => {
+        if (map.ticker != null) it.ticker = cells[map.ticker] || it.ticker;
+        if (map.name != null) it.name = cells[map.name] || it.name;
+        if (map.group != null) it.group = cells[map.group] || "";
+        if (map.kind != null) { const k = cells[map.kind].toLowerCase(); it.kind = /btp|stato|obblig/.test(k) ? "btp" : /azion|stock/.test(k) ? "stock" : /etf|etc/.test(k) ? "etf" : ""; }
+      });
+    }
+    items.forEach((it) => out.push(mk(it)));
+  }
+  return out;
+}
+
+/* ---- riepilogo e conferma ---- */
+function checkList(list) {
+  const errs = [], seen = new Set();
+  list.forEach((x, n) => {
+    const r = `Riga ${n + 1} (${x.ticker || x.isin || "vuota"})`;
+    if (!ISIN_OK.test(x.isin || "")) errs.push(`${r}: ISIN mancante o non valido`);
+    if (!x.ticker) errs.push(`${r}: ticker mancante`);
+    if (!x.group) errs.push(`${r}: gruppo mancante`);
+    if (x.isin && seen.has(x.isin)) errs.push(`${r}: ISIN ripetuto`);
+    seen.add(x.isin);
+  });
+  return errs;
+}
+function wizStep3() {
+  const errs = checkList(draft);
+  const added = draft.filter((d) => !d.id);
+  const removed = SAVED.filter((s) => !draft.some((d) => d.id === s.id));
+  const changed = draft.filter((d) => { const s = SAVED.find((x) => x.id === d.id); return s && ["isin", "ticker", "name", "group", "amount", "kind", ...PARAMS].some((k) => String(s[k] ?? "") !== String(d[k] ?? "")); });
+  wizShow(`<h1>Controlla e conferma</h1>
+    <p class="sub">${draft.length} titoli · totale <b>${eur(totalOf(draft))}</b></p>
+    ${listTable(draft)}
+    <div class="box"><b>Modifiche rispetto a prima</b><br>
+      Aggiunti: <b>${added.length}</b>${added.length ? " (" + added.map((x) => esc(x.ticker)).join(", ") + ")" : ""}<br>
+      Modificati: <b>${changed.length}</b>${changed.length ? " (" + changed.map((x) => esc(x.ticker)).join(", ") + ")" : ""}<br>
+      Eliminati: <b>${removed.length}</b>${removed.length ? " (" + removed.map((x) => esc(x.ticker)).join(", ") + ") — saranno cancellati anche i loro avvisi" : ""}</div>
+    ${errs.length ? `<p class="warnbox">Correggi prima di confermare:</p><ul class="errs">${errs.map((e) => `<li>${esc(e)}</li>`).join("")}</ul>` : `<p class="okbox">Tutto in ordine. Confermi questi titoli?</p>`}
+    <div class="btns"><button class="primary" id="w3ok" ${errs.length ? "disabled" : ""}>Conferma e vai avanti</button><button id="w3back">Torna a modificare</button></div>`);
+}
+
+$("#wiz").addEventListener("click", async (e) => {
+  const t = e.target.closest("button"); if (!t) return;
+  try {
+    if (t.id === "w1yes") { if ($("#skip").checked) localStorage.setItem("skipConfirm", "1"); return startApp(); }
+    if (t.id === "w1no") return wizStep2();
+    if (t.id === "w2back") return appStarted ? ($("#wiz").hidden = true, $("#app").hidden = false) : wizStep1();
+    if (t.id === "addRow") { draft.push({ isin: "", ticker: "", name: "", group: draft.at(-1)?.group || "", amount: 0, kind: "etf" }); drawRows(); return $("#rows").lastElementChild.scrollIntoView({ block: "center" }); }
+    if (t.dataset.rm != null) { draft.splice(+t.dataset.rm, 1); return drawRows(); }
+    if (t.id === "doPaste") {
+      const parsed = parsePaste($("#paste").value, SAVED);
+      if (!parsed.length) { $("#pasteMsg").textContent = "Non ho riconosciuto nessun titolo: controlla che ci siano ISIN o ticker."; return; }
+      if (document.querySelector("input[name=pm]:checked").value === "replace") { draft = parsed; $("#pasteMsg").textContent = `Letti ${parsed.length} titoli: la tabella è stata sostituita. Controlla e correggi qui sotto.`; }
+      else {
+        let add = 0, dup = 0;
+        for (const p of parsed) {
+          const ex = draft.find((d) => (p.isin && d.isin === p.isin) || (!p.isin && p.ticker && d.ticker.toLowerCase() === p.ticker.toLowerCase()));
+          if (ex) { dup++; if (!ex.isin && p.isin) ex.isin = p.isin; } else { draft.push(p); add++; }
+        }
+        $("#pasteMsg").textContent = `Aggiunti ${add} titoli nuovi, ${dup} erano già presenti.`;
+      }
+      return drawRows();
+    }
+    if (t.id === "w2next") return wizStep3();
+    if (t.id === "w3back") { const d = draft; wizStep2(); draft = d; return drawRows(); }
+    if (t.id === "w3ok") {
+      t.disabled = true;
+      const r = await api("instruments/replace", { method: "POST", body: JSON.stringify({ instruments: draft }) });
+      SAVED = r.instruments; toast("Titoli confermati"); return startApp("force");
+    }
+  } catch (err) { toast(err.message); if (t.id === "w3ok") t.disabled = false; }
+});
+$("#wiz").addEventListener("input", (e) => {
+  const el = e.target, rc = el.closest(".rc"); if (!rc || !el.dataset.f) return;
+  const x = draft[+rc.dataset.i], f = el.dataset.f;
+  if (f === "amount") x[f] = toNum(el.value);
+  else if (NUMF.includes(f)) x[f] = el.value.trim() === "" ? null : toNum(el.value);
+  else if (f === "freq") x[f] = el.value === "" ? null : +el.value;
+  else if (f === "isin") x[f] = el.value.trim().toUpperCase();
+  else x[f] = el.value;
+});
+
+/* ================= CRUSCOTTO ================= */
+async function boot() {
+  try { SAVED = (await api("instruments")).instruments; } catch (e) { return toast(e.message); }
+  if (localStorage.getItem("skipConfirm") === "1") return startApp();
+  wizStep1();
+}
+async function startApp(refresh) {
+  appStarted = true; $("#wiz").hidden = true; $("#app").hidden = false;
+  await load(refresh);
+}
+async function load(refresh = false) {
+  try { D = await api("data" + (refresh ? "?refresh=" + (refresh === true ? "1" : refresh) : "")); SAVED = D.instruments; render(); }
+  catch (e) { toast(e.message); }
+}
+
+function spark(pts, w = 84, h = 28) {
+  if (!pts || pts.length < 2) return `<span class="small">–</span>`;
+  const ys = pts.map((p) => p[1]), mn = Math.min(...ys), mx = Math.max(...ys), r = mx - mn || 1;
+  const d = ys.map((y, i) => `${(i / (ys.length - 1) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((y - mn) / r) * (h - 4)).toFixed(1)}`).join(" ");
+  const c = ys.at(-1) >= ys[0] ? "var(--up)" : "var(--down)";
+  return `<svg class="sp" width="${w}" height="${h}" role="img" aria-label="andamento intraday"><polyline points="${d}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+}
+
+function realNote(c) {
+  if (c.base == null) return "";
+  if (c.accrued != null) return `secco ${px(c.base)} + rateo ${px(c.accrued)}${c.ratio && c.ratio !== 1 ? ` × coeff. ${px(c.ratio, 4)}` : ""}`;
+  if (c.cost != null) return `prezzo ${px(c.base)} + costi ${px(c.cost)}`;
+  return "";
+}
+function render() {
+  const { instruments, latest, series, alerts, calc } = D, q = latest.quotes, prev = latest.prev || {}, TH = D.threshold || 0.04;
+  const used = new Set(), extra = [];
+  for (const i of instruments) { const f = q[i.id]?.fields || {}; PIN.forEach(([, re]) => { const [k] = pick(f, re); if (k) used.add(k); }); }
+  for (const i of instruments) for (const k of Object.keys(q[i.id]?.fields || {})) if (!used.has(k) && !extra.includes(k)) extra.push(k);
+
+  const rows = instruments.map((i) => {
+    const d = q[i.id] || {}, f = d.fields || {}, c = calc[i.id] || {};
+    const delta = d.last != null && prev[i.id] != null ? d.last - prev[i.id] : null;
+    const hl = delta != null && Math.abs(delta) > TH + 1e-9;
+    const est = d.pct != null ? (i.amount * d.pct) / 100 : null;
+    return { i, d, f, c, delta, hl, est, sys: alerts.find((a) => a.sys && a.id === i.id), other: alerts.filter((a) => !a.sys && a.id === i.id && a.active) };
+  });
+  TABLE_ROWS = rows;
+  $("#lockT").checked = D.lockTargets !== false;
+
+  $("#stamp").textContent = tfmt(latest.t);
+  const m = $("#mkt"); m.textContent = D.marketOpen ? "Mercato aperto" : "Mercato chiuso"; m.className = "pill " + (D.marketOpen ? "open" : "closed");
+  const ageMin = Math.round((Date.now() - new Date(latest.t)) / 60000);
+  const bn = $("#banner");
+  bn.hidden = !(D.marketOpen && ageMin > 15);
+  bn.textContent = `⚠️ Dati fermi da ${ageMin} minuti: premi “Aggiorna” o controlla il deploy su Netlify.`;
+  const nHl = rows.filter((r) => r.hl).length, nAl = alerts.filter((a) => a.active).length;
+  const estRows = rows.filter((r) => r.est != null), estSum = estRows.reduce((s, r) => s + r.est, 0), estBase = estRows.reduce((s, r) => s + r.i.amount, 0);
+  const errN = rows.filter((r) => r.d.error).length;
+  $("#cards").innerHTML = `
+    <div class="card"><div class="k">Portafoglio</div><div class="v">${eur(D.total)}</div><div class="n">${instruments.length} titoli${errN ? ` · <b class="down">${errN} con errore</b>` : ""}</div></div>
+    <div class="card"><div class="k">Variazione stimata oggi</div><div class="v ${estSum >= 0 ? "up" : "down"}">${estRows.length ? sgn(estSum) + " €" : "–"}</div><div class="n">${estBase ? sgn(estSum / estBase * 100) + " % sugli importi" : "dati non disponibili"}</div></div>
+    <div class="card"><div class="k">Evidenziati (giallo)</div><div class="v">${nHl}</div><div class="n">variazione &gt; ${TH.toLocaleString("it-IT")} € dalle ${latest.prevT ? tfmt(latest.prevT, new Date(latest.prevT).toDateString() !== new Date(latest.t).toDateString()).replace(/:\d\d$/, "") : "—"}</div></div>
+    <div class="card"><div class="k">Avvisi Telegram attivi</div><div class="v">${nAl}</div><div class="n">${alerts.length - nAl ? alerts.length - nAl + " già scattati" : "modificabili nella colonna Prezzo alert"}</div></div>`;
+  const S = D.settings || {};
+  $("#legend").innerHTML = `<span><i class="sw y"></i>prezzo variato di più di ${TH.toLocaleString("it-IT")} € rispetto alla rilevazione precedente</span><span><b class="up">verde</b> in rialzo · <b class="down">rosso</b> in calo</span><span>Target: tassi BCE +${(S.shockPct ?? 0.25).toLocaleString("it-IT")}% · storno azionario ${S.equityDropPct ?? 5}%</span><span>Dati con ritardo di circa 15 minuti · tocca una riga per il dettaglio</span>`;
+
+  const nCols = 3 + 5 + 2 + 4 + 2 + extra.length;
+  $("#tbl thead").innerHTML = `<tr><th colspan="3">Titolo</th><th colspan="5" class="sep">Prezzi, rendimento e avviso</th><th colspan="2" class="sep">Posizione</th><th colspan="4" class="sep">Andamento di oggi</th><th colspan="2" class="sep">Scambi di oggi</th>${extra.length ? `<th colspan="${extra.length}" class="sep">Altri dati Borsa Italiana</th>` : ""}</tr>
+    <tr><th>Tipo</th><th>ISIN</th><th>Denominazione</th><th class="sep">Prezzo attuale</th><th>Prezzo reale</th><th>Interesse effettivo annuo</th><th>Prezzo target</th><th>Prezzo alert (modificabile)</th><th class="sep">Importo</th><th>Peso</th><th class="sep">Δ prec.</th><th>Var %</th><th>Var. € stima</th><th>Intraday</th><th class="sep">N. contratti</th><th>Controvalore</th>${extra.map((k, n) => `<th class="${n === 0 ? "sep" : ""}">${esc(k)}</th>`).join("")}</tr>`;
+
+  let html = "", grp = "";
+  for (const r of rows) {
+    if (onlyHl && !r.hl) continue;
+    const { i, d, f, c, sys } = r;
+    if (i.group !== grp) {
+      grp = i.group;
+      const gi = instruments.filter((x) => x.group === grp), tot = gi.reduce((s, x) => s + x.amount, 0);
+      html += `<tr class="grp"><td colspan="${nCols}">${esc(grp)} · ${eur(tot)} · ${(tot / D.total * 100).toFixed(1).replace(".", ",")}% del portafoglio</td></tr>`;
+    }
+    const v = PIN.map(([, re]) => pick(f, re)[1]);
+    const tip = esc([...(c.notes || [])].join(" "));
+    const miss = c.missing?.length ? `<div class="miss">manca: ${esc(c.missing.join(", "))}</div>` : "";
+    const yieldTxt = c.yieldGross != null
+      ? `<div class="b big">${pc(c.yieldGross)}${c.type?.includes("€i") ? " <span class='small'>reale</span>" : ""}</div>
+         ${c.yieldNet != null ? `<div class="small">dopo imposte ${pc(c.yieldNet)}</div>` : ""}
+         ${c.yieldNominal != null ? `<div class="small">≈ nominale ${pc(c.yieldNominal)}</div>` : ""}
+         ${c.borsaYield != null ? `<div class="small">Borsa It.: ${pc(c.borsaYield)}</div>` : ""}`
+      : `<span class="small">n.d.</span>${miss}`;
+    const targetTxt = c.target != null
+      ? `<div class="b big">${px(c.target)}</div>${c.targetReal != null ? `<div class="small">acquisto reale ${px(c.targetReal)}</div>` : ""}${d.last ? `<div class="small">${sgn((c.target / d.last - 1) * 100)}% dall'attuale</div>` : ""}`
+      : `<span class="small">n.d.</span>`;
+    const dist = sys && d.last != null ? sys.price - d.last : null;
+    const alertTxt = `<input class="alin" data-sys="${esc(i.id)}" inputmode="decimal" value="${sys ? px(sys.price) : ""}" placeholder="manuale" aria-label="Prezzo alert ${esc(i.ticker)}">
+      <div class="small">${sys ? `${sys.mode === "manual" ? "<b>manuale</b>" : (D.lockTargets !== false ? "auto · bloccato" : "auto = target")} · ${sys.active ? "attivo" : "<b>✓ scattato</b>"}` : "nessun avviso"}</div>
+      ${sys && sys.active && dist != null ? `<div class="small">mancano ${px(Math.abs(dist))} (${(Math.abs(dist) / d.last * 100).toFixed(1).replace(".", ",")}%)</div>` : ""}
+      ${sys && !sys.active ? `<button class="mini-b" data-re="${sys.aid}">Riattiva</button>` : ""}
+      ${c.target != null && (!sys || sys.mode === "manual" || Math.abs(sys.price - c.target) > 0.0006) ? `<button class="mini-b" data-auto="${esc(i.id)}" title="Copia il Prezzo target nell'alert">↻ target</button>` : ""}
+      ${r.other.length ? `<div class="small">+${r.other.length} altri avvisi</div>` : ""}`;
+    const priceCells = d.error
+      ? `<td colspan="5" class="err sep">⚠️ ${esc(d.error)}</td>`
+      : `<td class="num last sep ${r.hl ? "hl" : ""}">${esc(v[0]) || "–"}${c.baseSrc === "lettera" ? `<div class="small">lettera ${px(c.base)}</div>` : ""}</td>
+         <td class="num" title="${tip}">${c.real != null ? `<div class="b big">${px(c.real)}</div><div class="small">${esc(realNote(c))}</div>` : "n.d."}</td>
+         <td class="num" title="${tip}">${yieldTxt}</td>
+         <td class="num" title="${tip}">${targetTxt}</td>
+         <td class="num alcell">${alertTxt}</td>`;
+    const moveCells = d.error
+      ? `<td colspan="6" class="sep small">–</td>`
+      : `<td class="num b sep ${r.hl ? "hl" : ""}">${r.delta == null ? "–" : `<span class="${r.delta > 0 ? "up" : r.delta < 0 ? "down" : ""}">${sgn(r.delta)}</span>`}</td>
+         <td class="num b ${signCls(v[1])}">${esc(v[1]) || "–"}</td>
+         <td class="num ${r.est == null ? "" : r.est >= 0 ? "up" : "down"}">${r.est == null ? "–" : sgn(r.est) + " €"}</td>
+         <td>${spark(series[i.id])}</td>
+         <td class="num b sep">${esc(v[2]) || "–"}</td><td class="num b">${esc(v[3]) || "–"}</td>`;
+    html += `<tr class="row" data-id="${esc(i.id)}">
+      <td class="tp"><div class="tipo">${esc(c.type || kindLabel(i.kind))}</div><div class="tkr"><b>${esc(i.ticker)}</b></div>${c.sub ? `<div class="small">${esc(c.sub)}</div>` : ""}</td>
+      <td class="isin">${esc(i.isin) || "ISIN mancante"}</td>
+      <td class="den">${esc(d.fullName || i.name)}${d.fullName ? "" : ` <span class="small">(nome inserito da te)</span>`}</td>
+      ${priceCells}
+      <td class="num b sep">${eur(i.amount)}</td><td class="num">${(i.amount / D.total * 100).toFixed(1).replace(".", ",")}%</td>
+      ${moveCells}
+      ${extra.map((k, n) => `<td class="num ${n === 0 ? "sep" : ""}">${esc(f[k]) || ""}</td>`).join("")}</tr>`;
+  }
+  $("#tbl tbody").innerHTML = html || `<tr><td colspan="${nCols}" style="padding:20px">Nessun titolo evidenziato in questo momento.</td></tr>`;
+  if (openId && $("#dlg").open) renderSheet(openId);
+}
+
+/* ---- esportazione CSV ---- */
+$("#btnCsv").onclick = () => {
+  if (!D) return;
+  const extra = []; TABLE_ROWS.forEach((r) => Object.keys(r.f).forEach((k) => { if (!extra.includes(k)) extra.push(k); }));
+  const head = ["Rilevazione", "Tipo", "ISIN", "Denominazione", "Prezzo attuale", "Prezzo reale", "Interesse effettivo annuo %", "Prezzo target", "Prezzo alert", "Gruppo", "Importo", "Delta prec.", "Var %", "Var. € stima", ...extra];
+  const csvc = (x) => `"${String(x ?? "").replace(/"/g, '""')}"`;
+  const n3 = (x) => (x == null ? "" : (+x).toFixed(3).replace(".", ","));
+  const lines = TABLE_ROWS.map((r) => [tfmt(D.latest.t, true), r.c.type, r.i.isin, r.d.fullName || r.i.name, r.d.last ?? "", n3(r.c.real), r.c.yieldGross == null ? "" : r.c.yieldGross.toFixed(2).replace(".", ","), n3(r.c.target), r.sys ? n3(r.sys.price) : "", r.i.group, r.i.amount, r.delta == null ? "" : r.delta.toFixed(3), r.d.pct ?? "", r.est == null ? "" : r.est.toFixed(2), ...extra.map((k) => r.f[k] ?? "")].map(csvc).join(";"));
+  const blob = new Blob(["\ufeff" + [head.map(csvc).join(";"), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "borsa-" + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "") + ".csv"; a.click();
+};
+
+/* ---- dettaglio titolo ---- */
+function chart(id) {
+  const pts = D.series[id] || [];
+  if (pts.length < 2) return `<p class="small">Il grafico si forma man mano che arrivano le rilevazioni (una ogni 5 minuti a mercato aperto).</p>`;
+  const W = 520, H = 170, p = 40, ys = pts.map((x) => x[1]), t = pts.map((x) => +new Date(x[0]));
+  const al = D.alerts.filter((a) => a.id === id && a.active), all = [...ys, ...al.map((a) => a.price)];
+  let mn = Math.min(...all), mx = Math.max(...all); const pad = (mx - mn) * 0.08 || 0.01; mn -= pad; mx += pad;
+  const X = (v) => p + ((v - t[0]) / (t.at(-1) - t[0] || 1)) * (W - p - 8), Y = (v) => H - 22 - ((v - mn) / (mx - mn)) * (H - 34);
+  const line = pts.map((x, i) => `${X(t[i]).toFixed(1)},${Y(x[1]).toFixed(1)}`).join(" ");
+  const c = ys.at(-1) >= ys[0] ? "var(--up)" : "var(--down)";
+  const hh = (ms) => new Date(ms).toLocaleTimeString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Andamento intraday">
+    <line x1="${p}" x2="${W - 8}" y1="${Y(mx - pad)}" y2="${Y(mx - pad)}" stroke="var(--line)"/><line x1="${p}" x2="${W - 8}" y1="${Y(mn + pad)}" y2="${Y(mn + pad)}" stroke="var(--line)"/>
+    <text x="2" y="${Y(mx - pad) + 4}" font-size="11" fill="var(--muted)">${fmt(mx - pad)}</text><text x="2" y="${Y(mn + pad) + 4}" font-size="11" fill="var(--muted)">${fmt(mn + pad)}</text>
+    ${al.map((a) => `<line x1="${p}" x2="${W - 8}" y1="${Y(a.price)}" y2="${Y(a.price)}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4"/><text x="${W - 10}" y="${Y(a.price) - 4}" font-size="11" text-anchor="end" fill="var(--accent)">${a.cond === "below" ? "acquisto" : "vendita"} ${fmt(a.price)}</text>`).join("")}
+    <polyline points="${line}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round"/>
+    <text x="${p}" y="${H - 4}" font-size="11" fill="var(--muted)">${hh(t[0])}</text><text x="${W - 8}" y="${H - 4}" font-size="11" text-anchor="end" fill="var(--muted)">${hh(t.at(-1))}</text></svg>`;
+}
+function renderSheet(id) {
+  const r = TABLE_ROWS.find((x) => x.i.id === id); if (!r) return;
+  const { i, d, f, c, sys } = r, al = D.alerts.filter((a) => !a.sys && a.id === id);
+  $("#sheet").innerHTML = `
+    <h2>${esc(d.fullName || i.name)}</h2>
+    <div class="sub"><b>${esc(c.type || "")}</b>${c.sub ? " · " + esc(c.sub) : ""} · <b class="isin">${esc(i.isin)}</b> · ${esc(i.ticker)}<br>${eur(i.amount)} in portafoglio (${(i.amount / D.total * 100).toFixed(1).replace(".", ",")}%)${d.url ? ` · <a href="${esc(d.url)}" target="_blank" rel="noopener">scheda Borsa Italiana</a>` : ""}</div>
+    ${d.last != null ? `<div class="sub">Ultimo <b>${fmt(d.last)}</b>${r.delta != null ? ` · rispetto alla rilevazione precedente <b class="${r.delta >= 0 ? "up" : "down"}">${sgn(r.delta, 3)}</b>` : ""}</div>` : ""}
+    ${chart(id)}
+    <h3 class="h3">Come sono calcolati prezzo reale, rendimento e target</h3>
+    <ul class="notes">${(c.notes || []).map((n) => `<li>${esc(n)}</li>`).join("") || "<li>Nessun dato disponibile.</li>"}
+      ${c.missing?.length ? `<li class="miss">Dati mancanti: ${esc(c.missing.join(", "))}. Inseriscili da “Titoli” → “Parametri per i calcoli”.</li>` : ""}
+      <li class="small">Sono stime: escluse le commissioni bancarie; il valore nominale dei BTP€i usa un'inflazione ipotizzata del ${D.settings?.inflationPct ?? 2}%.</li></ul>
+    <h3 class="h3">Avviso Telegram principale</h3>
+    <p class="small">${sys ? `Soglia <b>${px(sys.price)}</b> (${sys.mode === "manual" ? "manuale" : "copiata dal Prezzo target"}) · ${sys.active ? "attivo" : "già scattato"}. Modificala direttamente nella tabella.` : "Nessun avviso: il Prezzo target non è disponibile; scrivi tu un valore nella tabella."}</p>
+    <div class="kv">${Object.entries(f).map(([k, v]) => `<div><span>${esc(k)}</span><b class="num">${esc(v)}</b></div>`).join("") || `<p class="err">${esc(d.error || "Nessun dato")}</p>`}</div>
+    <h3 class="h3">Altri avvisi (facoltativi)</h3>
+    <form class="al" id="alForm">
+      <select name="cond" aria-label="Condizione"><option value="below">Acquisto: scende a</option><option value="above">Vendita: sale a</option></select>
+      <input name="price" inputmode="decimal" placeholder="Prezzo" required aria-label="Prezzo di riferimento">
+      <button class="primary">Aggiungi</button>
+    </form>
+    <ul class="alist">${al.map((a) => `<li><span>${a.cond === "below" ? "Acquisto ≤" : "Vendita ≥"} <b>${fmt(a.price)}</b> ${a.active ? "· attivo" : a.triggeredAt ? `· scattato ${tfmt(a.triggeredAt, true).replace(/:\d\d$/, "")} a ${fmt(a.triggeredPrice)}` : ""}${a.lastError ? `<br><span class="err">${esc(a.lastError)}</span>` : ""}</span>
+      ${!a.active ? `<button data-re="${a.aid}">Riattiva</button>` : ""}<button data-del="${a.aid}">Elimina</button></li>`).join("") || `<li class="small">Nessun altro avviso.</li>`}</ul>
+    <button id="close" style="width:100%">Chiudi</button>`;
+}
+$("#tbl").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-auto],button[data-re]");
+  if (b) {
+    try {
+      D.alerts = b.dataset.auto
+        ? (await api("alerts/sys", { method: "POST", body: JSON.stringify({ id: b.dataset.auto, price: null }) })).alerts
+        : (await api("alerts/reactivate?aid=" + b.dataset.re, { method: "POST" })).alerts;
+      toast("Avviso aggiornato"); render();
+    } catch (err) { toast(err.message); }
+    return;
+  }
+  if (e.target.closest("input")) return;
+  const tr = e.target.closest("tr.row"); if (!tr) return;
+  openId = tr.dataset.id; renderSheet(openId); $("#dlg").showModal();
+});
+$("#tbl").addEventListener("change", async (e) => {
+  const el = e.target; if (!el.dataset.sys) return;
+  const raw = el.value.trim();
+  try {
+    const price = raw === "" ? null : toNum(raw);
+    if (raw !== "" && !(price > 0)) throw new Error("Prezzo non valido");
+    D.alerts = (await api("alerts/sys", { method: "POST", body: JSON.stringify({ id: el.dataset.sys, price }) })).alerts;
+    toast(price == null ? "Avviso riportato al Prezzo target" : "Prezzo alert salvato");
+  } catch (err) { toast(err.message); }
+  render();
+});
+$("#dlg").addEventListener("click", async (e) => {
+  const t = e.target;
+  try {
+    if (t.id === "close" || t === $("#dlg")) return $("#dlg").close();
+    if (t.dataset.del) D.alerts = (await api("alerts?aid=" + t.dataset.del, { method: "DELETE" })).alerts;
+    else if (t.dataset.re) D.alerts = (await api("alerts/reactivate?aid=" + t.dataset.re, { method: "POST" })).alerts;
+    else return;
+    render(); renderSheet(openId);
+  } catch (err) { toast(err.message); }
+});
+$("#dlg").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target), price = parseFloat(String(fd.get("price")).replace(",", "."));
+  try {
+    D.alerts = (await api("alerts", { method: "POST", body: JSON.stringify({ id: openId, cond: fd.get("cond"), price }) })).alerts;
+    toast("Avviso salvato"); render(); renderSheet(openId);
+  } catch (err) { toast(err.message); }
+});
+$("#dlg").addEventListener("close", () => { openId = null; });
+$("#onlyHl").onchange = (e) => { onlyHl = e.target.checked; if (D) render(); };
+$("#lockT").onchange = async (e) => {
+  try {
+    await api("settings", { method: "POST", body: JSON.stringify({ lockTargets: e.target.checked }) });
+    D.lockTargets = e.target.checked; render();
+    toast(e.target.checked ? "Target bloccati: gli avvisi automatici restano fissi" : "Target sbloccati: gli avvisi automatici si riallineano ogni giorno");
+  } catch (err) { toast(err.message); e.target.checked = !e.target.checked; }
+};
+$("#btnInst").onclick = () => wizStep2();
+$("#btnSync").onclick = async () => {
+  if (!confirm("Copiare i Prezzi target negli avvisi automatici? I valori che hai scritto a mano restano invariati.")) return;
+  try { const r = await api("alerts/sync-all", { method: "POST" }); D.alerts = r.alerts; toast(r.updated + " avvisi aggiornati"); render(); } catch (e) { toast(e.message); }
+};
+$("#btnRef").onclick = async () => { toast("Aggiorno i prezzi…"); await load(true); };
+$("#btnTg").onclick = async () => { try { await api("telegram-test", { method: "POST" }); toast("Messaggio di prova inviato"); } catch (e) { toast(e.message); } };
+
+boot();
+setInterval(() => { if (appStarted && !$("#app").hidden && !document.hidden && !document.activeElement?.classList?.contains("alin")) load(); }, 60000);
+document.addEventListener("visibilitychange", () => { if (appStarted && !$("#app").hidden && !document.hidden) load(); });
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+</script>
+</body>
+</html>
